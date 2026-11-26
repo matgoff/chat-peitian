@@ -278,7 +278,7 @@ $("d-collega").onclick = async () => {
   if (!key || !codice || !ver) { $("d-errore").textContent = "Apri prima Dropbox (punto 1) e incolla il codice."; return; }
   const r = await fetch(API + "/oauth2/token", {method: "POST", body: new URLSearchParams({code: codice, grant_type: "authorization_code", client_id: key, code_verifier: ver})});
   const d = await r.json().catch(() => ({}));
-  if (!r.ok || !d.refresh_token) { $("d-errore").textContent = "Codice non valido: rifai il punto 1. " + (d.error_description || ""); return; }
+  if (!r.ok || !d.refresh_token) { $("d-errore").textContent = "Dropbox non accetta il codice (" + (d.error_description || d.error || r.status) + "). Rifai il punto 1 e incolla il codice nuovo."; return; }
   ls.set("refresh", d.refresh_token); ls.del("pkce");
   TOKEN = d.access_token; SCADE = Date.now() + (d.expires_in || 14400) * 1000;
   $("d-codice").value = "";
