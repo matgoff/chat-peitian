@@ -173,7 +173,19 @@ label{font-size:13px;color:var(--grigio)}
 "use strict";
 // ======================================================================= impostazioni
 const APP_KEY_FISSA = "__APP_KEY__";             // la mette crea_web_iphone.py se la conosce
-const RADICE = "/Chat Gestionale Europeo";        // dentro la cartella dell'app Dropbox
+// cartella della chat: con un'app «cartella dell'app» è "/Chat Gestionale Europeo"; con un'app «Dropbox completo»
+// è dentro Applicazioni/Gestionale PEITIAN Europe. Si prova in quest'ordine e si ricorda quella trovata.
+const RADICI = ["/Applicazioni/Gestionale PEITIAN Europe/Chat Gestionale Europeo", "/Apps/Gestionale PEITIAN Europe/Chat Gestionale Europeo",
+  "/Chat Gestionale Europeo"];
+let RADICE = ls_get("radice", RADICI[0]);
+function ls_get(k, d) { try { const v = localStorage.getItem("cge_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } }
+async function trovaRadice() {
+  for (const r of [RADICE, ...RADICI.filter(x => x !== RADICE)]) {
+    try { await rpc("files/get_metadata", {path: r + "/utenti.json"}); RADICE = r; ls.set("radice", r); return r; }
+    catch (e) { if (e.stato !== 409) throw e; }
+  }
+  throw new Error("Non trovo la cartella «Chat Gestionale Europeo» in questo Dropbox: sei entrato con l'account giusto?");
+}
 const NOME_CENTRALE = "Peitian Europe";
 const PC = "iPhone";
 const ONLINE_S = 75, BATTITO_S = 50, SYNC_S = 5;
@@ -298,6 +310,7 @@ $("l-entra").onclick = async () => {
   try {
     const att = ls.get("tentativi", {n: 0, t: 0});
     if (att.n >= 5 && Date.now() - att.t < 15 * 60000) { $("l-errore").textContent = "Troppi tentativi: riprova tra 15 minuti."; return; }
+    await trovaRadice();
     const f = await scaricaTesto(RADICE + "/utenti.json");
     const utenti = f ? JSON.parse(f.testo) : {};
     const nome = Object.keys(utenti).find(n => n.toLowerCase() === $("l-utente").value.trim().toLowerCase());
@@ -406,6 +419,7 @@ async function applica(voci, k, tipo, base) {
 }
 async function caricaTutto() {
   SEDI = {}; CURSORI = [];
+  await trovaRadice();
   const rad = await elenca(RADICE, false);
   const cartelle = rad.voci.filter(v => v[".tag"] === "folder" && !v.name.endsWith(" - Riservato")).map(v => v.name);
   const info = await aLotti(cartelle.map(n => async () => { const f = await scaricaTesto(`${RADICE}/${n}/sede.json`); try { return f ? JSON.parse(f.testo) : null; } catch (e) { return null; } }), 6);
