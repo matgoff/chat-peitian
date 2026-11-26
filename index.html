@@ -184,7 +184,17 @@ async function trovaRadice() {
     try { await rpc("files/get_metadata", {path: r + "/utenti.json"}); RADICE = r; ls.set("radice", r); return r; }
     catch (e) { if (e.stato !== 409) throw e; }
   }
-  throw new Error("Non trovo la cartella «Chat Gestionale Europeo» in questo Dropbox: sei entrato con l'account giusto?");
+  // ricerca in tutto il Dropbox (la cartella può essere altrove, per esempio condivisa)
+  try {
+    const r = await rpc("files/search_v2", {query: "utenti.json", options: {filename_only: true, max_results: 100}});
+    for (const m of r.matches || []) {
+      const md = m.metadata && m.metadata.metadata, p = md && md.path_display;
+      if (p && /\/Chat Gestionale Europeo\/utenti\.json$/i.test(p)) { RADICE = p.slice(0, -"/utenti.json".length); ls.set("radice", RADICE); return RADICE; }
+    }
+  } catch (e) {}
+  let cosa = "";
+  try { const r = await elenca("", false); cosa = r.voci.map(v => v.name).slice(0, 15).join(", "); } catch (e) {}
+  throw new Error("Non trovo la cartella «Chat Gestionale Europeo» in questo Dropbox. Cartelle presenti: " + (cosa || "nessuna") + ".");
 }
 const NOME_CENTRALE = "Peitian Europe";
 const PC = "iPhone";
