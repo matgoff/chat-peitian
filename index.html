@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="it"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#008069">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Chat PEITIAN">
+<link rel="icon" href="icona.png"><link rel="apple-touch-icon" href="icona.png">
+<title>Chat PEITIAN</title>
+<!-- Chat del Gestionale PEITIAN per iPhone: legge e scrive direttamente su Dropbox (funziona a PC spento).
+     Stessi file del programma: canali/<cartella>/<utente>__<pc>.jsonl, canale.json, presenza/. Scrive solo i
+     propri file (<utente>__iPhone.jsonl e la propria presenza), come ogni PC. -->
+<style>
+:root{--verde:#008069;--verde2:#25d366;--mio:#d9fdd3;--sfondo:#efeae2;--grigio:#667781;--riga:#e9edef;--blu:#53bdeb}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;font-family:-apple-system,"SF Pro Text","Segoe UI",Roboto,sans-serif;color:#111b21;background:#fff}
+button{font:inherit;cursor:pointer}
+input,textarea{font:inherit;font-size:16px}
+.vista{display:none;flex-direction:column;height:100%;height:100dvh}
+.vista.on{display:flex}
+header{background:var(--verde);color:#fff;display:flex;align-items:center;gap:8px;padding:8px 10px;
+ padding-top:max(8px,env(safe-area-inset-top));min-height:56px;flex:none}
+header h1{font-size:19px;margin:0;flex:1;font-weight:600}
+header button{background:none;border:0;color:#fff;font-size:21px;padding:4px 8px;border-radius:20px}
+header button:active{background:rgba(255,255,255,.2)}
+.scorre{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+.scheda{max-width:380px;margin:30px auto;padding:20px;display:flex;flex-direction:column;gap:10px}
+.scheda img{width:80px;height:80px;align-self:center;border-radius:18px}
+.scheda h2{text-align:center;margin:0 0 4px;color:var(--verde);font-size:21px}
+.scheda p{color:var(--grigio);font-size:14px;margin:0}
+label{font-size:13px;color:var(--grigio)}
+.campo{width:100%;padding:11px;border:1px solid #ccd;border-radius:10px;background:#fff}
+.primario{background:var(--verde);color:#fff;border:0;border-radius:22px;padding:12px;font-weight:600}
+.secondario{background:#fff;color:var(--verde);border:1px solid var(--verde);border-radius:22px;padding:11px}
+.errore{color:#c0392b;font-size:14px;min-height:18px}
+/* elenco chat */
+.ricerca{padding:7px 10px;background:#fff;flex:none}
+.ricerca input{width:100%;border:0;background:#f0f2f5;border-radius:18px;padding:9px 14px}
+.filtri{display:flex;gap:6px;padding:0 10px 6px;overflow-x:auto;flex:none}
+.filtri button{border:0;background:#f0f2f5;color:#54656f;border-radius:16px;padding:6px 12px;font-size:14px;white-space:nowrap}
+.filtri button.on{background:#d8fdd2;color:#008069;font-weight:600}
+.voce{display:flex;align-items:center;gap:12px;padding:10px 14px 0;cursor:pointer}
+.voce:active{background:#f5f6f6}
+.voce .corpo{flex:1;min-width:0;border-bottom:1px solid var(--riga);padding-bottom:10px}
+.voce .su,.voce .giu{display:flex;align-items:center;gap:6px}
+.voce .nome{flex:1;font-size:16.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.voce .ora{font-size:12px;color:var(--grigio)}
+.voce.nl .ora{color:var(--verde2);font-weight:600}
+.voce .ant{flex:1;font-size:14.5px;color:var(--grigio);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
+.voce .sede{font-size:11px;color:#fff;background:#8696a0;border-radius:4px;padding:0 5px;flex:none}
+.badge{background:var(--verde2);color:#fff;border-radius:11px;min-width:21px;height:21px;padding:0 6px;font-size:12px;
+ display:inline-flex;align-items:center;justify-content:center;font-weight:600}
+.avatar{width:49px;height:49px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+ color:#fff;font-weight:600;font-size:17px}
+.avatar.p{width:38px;height:38px;font-size:14px}
+.gruppo{padding:12px 14px 4px;font-size:13px;color:var(--verde);font-weight:600}
+.vuoto{padding:40px 20px;text-align:center;color:var(--grigio)}
+.fab{position:fixed;right:18px;bottom:max(22px,env(safe-area-inset-bottom));width:56px;height:56px;border-radius:16px;border:0;
+ background:var(--verde2);color:#fff;font-size:24px;box-shadow:0 3px 8px rgba(0,0,0,.25)}
+.avviso{background:#fff3cd;color:#6b5100;font-size:13px;padding:6px 10px;text-align:center;display:none;flex:none}
+/* chat */
+#v-chat header .info{flex:1;min-width:0;line-height:1.15}
+#v-chat header .info b{display:block;font-size:16.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600}
+#v-chat header .info small{font-size:12.5px;opacity:.85;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+#messaggi{background:var(--sfondo);padding:8px 10px 14px;
+ background-image:radial-gradient(rgba(0,0,0,.035) 1px,transparent 1px);background-size:18px 18px}
+.giorno{text-align:center;margin:10px 0}
+.giorno span{background:#fff;color:#54656f;font-size:12.5px;padding:5px 12px;border-radius:8px;box-shadow:0 1px .5px rgba(11,20,26,.13)}
+.nonletti-sep{text-align:center;margin:10px -10px;background:rgba(255,255,255,.7);color:#54656f;font-size:12.5px;padding:5px}
+.riga{display:flex;margin:2px 0}
+.riga.mio{justify-content:flex-end}
+.riga.primo{margin-top:8px}
+.fumetto{max-width:84%;background:#fff;border-radius:8px;padding:6px 8px 5px 9px;box-shadow:0 1px .5px rgba(11,20,26,.13);
+ word-wrap:break-word;overflow-wrap:anywhere;position:relative}
+.mio .fumetto{background:var(--mio)}
+.riga.primo:not(.mio) .fumetto{border-top-left-radius:0}
+.riga.primo.mio .fumetto{border-top-right-radius:0}
+.fumetto .chi{font-size:13px;font-weight:600;margin-bottom:2px}
+.fumetto .t{white-space:pre-wrap;font-size:15.5px;line-height:1.32}
+.fumetto .t a{color:#027eb5}
+.fumetto .piede{float:right;font-size:11px;color:var(--grigio);margin:6px 0 -3px 10px;white-space:nowrap}
+.spunte{font-size:13px;letter-spacing:-4px;margin-left:3px;color:#8696a0}
+.spunte.letto{color:var(--blu)}
+.fumetto .file{display:flex;align-items:center;gap:8px;background:rgba(0,0,0,.05);border-radius:6px;padding:8px;margin:2px 0 3px;
+ color:#111b21;text-decoration:none;font-size:14.5px}
+.fumetto img.foto{display:block;max-width:100%;max-height:300px;border-radius:6px;margin:1px 0 3px;min-width:120px;min-height:80px;
+ background:#ddd;object-fit:cover}
+.fumetto.eliminato .t{font-style:italic;color:var(--grigio)}
+.fumetto.sistema{background:#fff8d6}
+.fumetto.evidenza{animation:lampo 2s}
+@keyframes lampo{0%,60%{box-shadow:0 0 0 3px #f5b400}100%{box-shadow:0 1px .5px rgba(11,20,26,.13)}}
+.barra{display:flex;gap:6px;align-items:flex-end;padding:6px 6px;background:#f0f2f5;padding-bottom:max(6px,env(safe-area-inset-bottom));flex:none}
+.barra .box{flex:1;display:flex;align-items:flex-end;background:#fff;border-radius:22px;padding:0 4px 0 6px}
+.barra textarea{flex:1;resize:none;border:0;padding:10px 6px;max-height:130px;min-height:42px;background:none;outline:none}
+.barra .ic{background:none;border:0;font-size:21px;padding:8px 6px;color:#54656f}
+.invia{width:46px;height:46px;border-radius:23px;border:0;background:var(--verde);color:#fff;font-size:19px;flex:none}
+/* foglio azioni */
+#foglio{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:flex-end;z-index:9}
+#foglio.on{display:flex}
+#foglio .pann{background:#fff;width:100%;border-radius:14px 14px 0 0;padding:8px 0 max(10px,env(safe-area-inset-bottom))}
+#foglio button{display:block;width:100%;background:none;border:0;text-align:left;padding:14px 20px;font-size:16px}
+#foglio button.rosso{color:#c0392b}
+#visore{position:fixed;inset:0;background:#000;display:none;align-items:center;justify-content:center;z-index:10}
+#visore.on{display:flex}
+#visore img{max-width:100%;max-height:100%}
+#visore button{position:absolute;top:max(12px,env(safe-area-inset-top));color:#fff;background:rgba(0,0,0,.4);border:0;
+ font-size:22px;border-radius:20px;padding:6px 12px}
+</style></head>
+<body>
+
+<!-- 1) collegamento a Dropbox (una volta sola) -->
+<section id="v-dropbox" class="vista"><div class="scheda">
+ <img src="icona.png" alt=""><h2>Chat PEITIAN</h2>
+ <p>Prima volta: collega il tuo Dropbox (quello dove c'è la chat del Gestionale).</p>
+ <label>App key Dropbox (☰ Menu ▸ Account cloud… nel Gestionale)</label>
+ <input id="d-key" class="campo" autocapitalize="none" autocomplete="off" spellcheck="false">
+ <button class="secondario" id="d-apri">1 · Apri Dropbox e consenti</button>
+ <label>2 · Incolla qui il codice che Dropbox ti mostra</label>
+ <input id="d-codice" class="campo" autocapitalize="none" autocomplete="off" spellcheck="false">
+ <div class="errore" id="d-errore"></div>
+ <button class="primario" id="d-collega">Collega</button>
+</div></section>
+
+<!-- 2) accesso con utente e password del Gestionale -->
+<section id="v-login" class="vista"><div class="scheda">
+ <img src="icona.png" alt=""><h2>Chat PEITIAN</h2>
+ <label>Utente</label><input id="l-utente" class="campo" autocomplete="username" autocapitalize="none">
+ <label>Password</label><input id="l-pw" class="campo" type="password" autocomplete="current-password">
+ <div class="errore" id="l-errore"></div>
+ <button class="primario" id="l-entra">Accedi</button>
+ <p style="text-align:center;margin-top:16px"><a href="#" id="l-scollega" style="color:#8696a0;font-size:13px">Scollega Dropbox</a></p>
+</div></section>
+
+<!-- 3) elenco chat -->
+<section id="v-home" class="vista">
+ <header><h1>Chat PEITIAN</h1><button id="b-aggiorna" title="Aggiorna">⟳</button><button id="b-esci" title="Esci">⏻</button></header>
+ <div class="ricerca"><input id="cerca" type="search" placeholder="Cerca chat e messaggi"></div>
+ <div class="filtri" id="filtri"></div>
+ <div class="avviso" id="avviso-home"></div>
+ <div class="scorre" id="elenco"><div class="vuoto">Caricamento…</div></div>
+ <button class="fab" id="b-nuova" title="Nuova chat">✎</button>
+</section>
+
+<!-- 4) chat -->
+<section id="v-chat" class="vista">
+ <header><button id="b-indietro">‹</button><div id="c-avatar"></div>
+  <div class="info"><b id="c-titolo"></b><small id="c-sotto"></small></div></header>
+ <div class="avviso" id="avviso-chat"></div>
+ <div class="scorre" id="messaggi"></div>
+ <div class="barra">
+  <div class="box">
+   <button class="ic" id="b-allega" title="Allega">📎</button>
+   <textarea id="m-testo" rows="1" placeholder="Messaggio"></textarea>
+   <button class="ic" id="b-foto" title="Foto">📷</button>
+  </div>
+  <button class="invia" id="b-invia">➤</button>
+  <input type="file" id="f-file" multiple hidden><input type="file" id="f-foto" accept="image/*" capture="environment" hidden>
+ </div>
+</section>
+
+<!-- 5) nuova chat (persone) -->
+<section id="v-persone" class="vista">
+ <header><button class="indietro">‹</button><h1>Nuova chat</h1></header>
+ <div class="scorre" id="persone"></div>
+</section>
+
+<div id="foglio"><div class="pann" id="foglio-p"></div></div>
+<div id="visore"><img id="visore-img" alt=""><button id="visore-x">✕</button></div>
+
+<script>
+"use strict";
+// ======================================================================= impostazioni
+const APP_KEY_FISSA = "__APP_KEY__";             // la mette crea_web_iphone.py se la conosce
+const RADICE = "/Chat Gestionale Europeo";        // dentro la cartella dell'app Dropbox
+const NOME_CENTRALE = "Peitian Europe";
+const PC = "iPhone";
+const ONLINE_S = 75, BATTITO_S = 50, SYNC_S = 5;
+const API = location.search.includes("prova=") ? location.origin + "/finto" : "https://api.dropboxapi.com";
+const CONTENUTI = location.search.includes("prova=") ? location.origin + "/finto" : "https://content.dropboxapi.com";
+const IMG = /\.(jpe?g|png|gif|webp|heic|bmp)$/i;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const link = s => esc(s).replace(/https?:\/\/[^\s<]+/g, u => `<a href="${u}" target="_blank" rel="noopener">${u}</a>`);
+const ls = {
+  get(k, d) { try { const v = localStorage.getItem("cge_" + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("cge_" + k, JSON.stringify(v)); } catch (e) {} },
+  del(k) { try { localStorage.removeItem("cge_" + k); } catch (e) {} },
+};
+const pulisci = n => String(n || "").replace(/[<>:"/\\|?*\x00-\x1f]/g, "").trim().replace(/^\.+|\.+$/g, "").slice(0, 60);
+function mostra(id) { document.querySelectorAll(".vista").forEach(v => v.classList.toggle("on", v.id === id)); }
+function avviso(id, t) { const e = $(id); e.textContent = t || ""; e.style.display = t ? "block" : "none"; }
+
+// ======================================================================= Dropbox
+const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const argAscii = o => JSON.stringify(o).replace(/[\u007f-￿]/g, c => "\\u" + c.charCodeAt(0).toString(16).padStart(4, "0"));
+let TOKEN = null, SCADE = 0;
+
+async function token() {
+  if (TOKEN && Date.now() < SCADE - 60000) return TOKEN;
+  const rt = ls.get("refresh"), key = ls.get("app_key");
+  if (!rt || !key) throw Object.assign(new Error("dropbox"), {dropbox: true});
+  const r = await fetch(API + "/oauth2/token", {method: "POST", body: new URLSearchParams({grant_type: "refresh_token", refresh_token: rt, client_id: key})});
+  if (!r.ok) { if (r.status === 400 || r.status === 401) { ls.del("refresh"); } throw Object.assign(new Error("dropbox"), {dropbox: true}); }
+  const d = await r.json();
+  TOKEN = d.access_token; SCADE = Date.now() + (d.expires_in || 14400) * 1000;
+  return TOKEN;
+}
+async function rpc(endpoint, corpo) {
+  for (let i = 0; ; i++) {
+    const r = await fetch(API + "/2/" + endpoint, {method: "POST",
+      headers: {"Authorization": "Bearer " + await token(), "Content-Type": "application/json"}, body: JSON.stringify(corpo)});
+    if (r.status === 401 && i === 0) { TOKEN = null; continue; }
+    if (r.status === 429 && i < 4) { await new Promise(f => setTimeout(f, 1500 * (i + 1))); continue; }
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw Object.assign(new Error(d.error_summary || ("Dropbox " + r.status)), {stato: r.status, dati: d});
+    return d;
+  }
+}
+async function contenuto(endpoint, arg, corpo) {
+  for (let i = 0; ; i++) {
+    const h = {"Authorization": "Bearer " + await token(), "Dropbox-API-Arg": argAscii(arg)};
+    if (corpo !== undefined) h["Content-Type"] = "application/octet-stream";
+    const r = await fetch(CONTENUTI + "/2/" + endpoint, {method: "POST", headers: h, body: corpo});
+    if (r.status === 401 && i === 0) { TOKEN = null; continue; }
+    if (r.status === 429 && i < 4) { await new Promise(f => setTimeout(f, 1500 * (i + 1))); continue; }
+    if (!r.ok) { const t = await r.text(); throw Object.assign(new Error(t.slice(0, 200) || ("Dropbox " + r.status)), {stato: r.status, testo: t}); }
+    return r;
+  }
+}
+async function scaricaTesto(path) {
+  try {
+    const r = await contenuto("files/download", {path});
+    const meta = JSON.parse(r.headers.get("Dropbox-API-Result") || "{}");
+    return {testo: await r.text(), rev: meta.rev};
+  } catch (e) { if (e.stato === 409) return null; throw e; }
+}
+async function carica(path, dati, modo, rinomina) {
+  const r = await contenuto("files/upload", {path, mode: modo || "overwrite", autorename: !!rinomina, mute: true}, dati);
+  return r.json();
+}
+async function elenca(path, ricorsivo) {
+  let d;
+  try { d = await rpc("files/list_folder", {path, recursive: !!ricorsivo, include_deleted: false}); }
+  catch (e) { if (e.stato === 409) return {voci: [], cursore: null}; throw e; }
+  const voci = [...d.entries];
+  while (d.has_more) { d = await rpc("files/list_folder/continue", {cursor: d.cursor}); voci.push(...d.entries); }
+  return {voci, cursore: d.cursor};
+}
+async function cambiamenti(cursore) {
+  let d = await rpc("files/list_folder/continue", {cursor: cursore});
+  const voci = [...d.entries];
+  while (d.has_more) { d = await rpc("files/list_folder/continue", {cursor: d.cursor}); voci.push(...d.entries); }
+  return {voci, cursore: d.cursor};
+}
+async function aLotti(lavori, n) {        // esegue promesse con al massimo n in parallelo
+  const out = []; let i = 0;
+  await Promise.all(Array.from({length: Math.min(n, lavori.length)}, async () => { while (i < lavori.length) { const k = i++; out[k] = await lavori[k](); } }));
+  return out;
+}
+
+// ======================================================================= collegamento Dropbox (PKCE, codice da incollare)
+$("d-key").value = ls.get("app_key", APP_KEY_FISSA.startsWith("__") ? "" : APP_KEY_FISSA);
+$("d-apri").onclick = async () => {
+  const key = $("d-key").value.trim();
+  if (!key) { $("d-errore").textContent = "Scrivi prima l'app key."; return; }
+  const ver = b64url(crypto.getRandomValues(new Uint8Array(48)));
+  const sfida = b64url(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(ver)));
+  ls.set("pkce", ver); ls.set("app_key", key);
+  const q = new URLSearchParams({client_id: key, response_type: "code", code_challenge: sfida, code_challenge_method: "S256", token_access_type: "offline"});
+  window.open("https://www.dropbox.com/oauth2/authorize?" + q, "_blank");
+};
+$("d-collega").onclick = async () => {
+  $("d-errore").textContent = "";
+  const key = ls.get("app_key") || $("d-key").value.trim(), codice = $("d-codice").value.trim(), ver = ls.get("pkce");
+  if (!key || !codice || !ver) { $("d-errore").textContent = "Apri prima Dropbox (punto 1) e incolla il codice."; return; }
+  const r = await fetch(API + "/oauth2/token", {method: "POST", body: new URLSearchParams({code: codice, grant_type: "authorization_code", client_id: key, code_verifier: ver})});
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.refresh_token) { $("d-errore").textContent = "Codice non valido: rifai il punto 1. " + (d.error_description || ""); return; }
+  ls.set("refresh", d.refresh_token); ls.del("pkce");
+  TOKEN = d.access_token; SCADE = Date.now() + (d.expires_in || 14400) * 1000;
+  $("d-codice").value = "";
+  vaiLogin();
+};
+$("l-scollega").onclick = e => { e.preventDefault(); if (confirm("Scollegare Dropbox da questo telefono?")) { ls.del("refresh"); ls.del("sessione"); TOKEN = null; mostra("v-dropbox"); } };
+
+// ======================================================================= accesso (utente e password del Gestionale)
+async function pbkdf2(pw, saleB64) {
+  const sale = Uint8Array.from(atob(saleB64), c => c.charCodeAt(0));
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  return new Uint8Array(await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt: sale, iterations: 200000}, k, 256));
+}
+function vaiLogin() { fermaTimer(); mostra("v-login"); $("l-utente").value = ls.get("ultimo_utente", ""); }
+$("l-entra").onclick = async () => {
+  $("l-errore").textContent = ""; $("l-entra").disabled = true;
+  try {
+    const att = ls.get("tentativi", {n: 0, t: 0});
+    if (att.n >= 5 && Date.now() - att.t < 15 * 60000) { $("l-errore").textContent = "Troppi tentativi: riprova tra 15 minuti."; return; }
+    const f = await scaricaTesto(RADICE + "/utenti.json");
+    const utenti = f ? JSON.parse(f.testo) : {};
+    const nome = Object.keys(utenti).find(n => n.toLowerCase() === $("l-utente").value.trim().toLowerCase());
+    let ok = false;
+    if (nome) {
+      const h = await pbkdf2($("l-pw").value, utenti[nome].sale);
+      const atteso = Uint8Array.from(atob(utenti[nome].hash), c => c.charCodeAt(0));
+      ok = h.length === atteso.length && h.every((b, i) => b === atteso[i]);
+    }
+    if (!ok) { ls.set("tentativi", {n: (Date.now() - att.t < 15 * 60000 ? att.n : 0) + 1, t: Date.now()}); $("l-errore").textContent = "Utente o password errati."; return; }
+    ls.del("tentativi"); ls.set("ultimo_utente", nome);
+    ls.set("sessione", {utente: nome, scade: Date.now() + 30 * 86400000});
+    $("l-pw").value = "";
+    avvia();
+  } catch (e) {
+    if (e.dropbox) mostra("v-dropbox"); else $("l-errore").textContent = "Errore: " + e.message;
+  } finally { $("l-entra").disabled = false; }
+};
+$("l-pw").onkeydown = e => { if (e.key === "Enter") $("l-entra").click(); };
+$("b-esci").onclick = async () => { if (!confirm("Uscire?")) return; await battito("offline").catch(() => {}); ls.del("sessione"); vaiLogin(); };
+
+// ======================================================================= dati (come core.py)
+let IO = null, CHIAVE = "";                    // utente e nome del proprio file (<utente>__iPhone)
+let SEDI = {};                                 // cartella sede -> {k, cart, info, ris, utenti, canali:{id:C}, presenze:{nome:dati}}
+let CURSORI = [];                              // [{path, cursore, k, tipo}]
+let LETTI = {};                                // "sede|canale" -> ts dell'ultimo messaggio letto (solo su questo telefono)
+
+function sedeAttuale(S, nome) { const a = (S.info.nomi_precedenti || []); return a.includes(nome) ? (S.info.nome || S.k) : nome; }
+function stessaPersona(S, p, utente, sede) {
+  return (p.utente || "").trim().toLowerCase() === (utente || "").trim().toLowerCase() &&
+    sedeAttuale(S, p.sede || "").toLowerCase() === sedeAttuale(S, sede || "").toLowerCase();
+}
+function eMio(S, m) { return !!m && m.utente === IO && sedeAttuale(S, m.sede) === NOME_CENTRALE; }
+
+function canale(S, id) {
+  if (!S.canali[id]) {
+    const ris = id.startsWith("R:"), nome = ris ? id.slice(2) : id;
+    S.canali[id] = {id, ris, nome, cart: (ris ? S.cart + " - Riservato" : S.cart) + "/canali/" + nome,
+      fileDir: (ris ? S.cart + " - Riservato" : S.cart) + "/File/" + nome, info: {}, files: {}, msgs: [], sporco: true};
+  }
+  return S.canali[id];
+}
+function ricostruisci(S, C) {
+  if (!C.sporco) return;
+  const noti = new Map(), eventi = [];
+  for (const nf in C.files) for (const riga of C.files[nf].testo.split("\n")) {
+    if (!riga.trim()) continue;
+    let m; try { m = JSON.parse(riga); } catch (e) { continue; }
+    if (!m || typeof m !== "object" || !m.id) continue;
+    if (m.tipo === "modifica" || m.tipo === "elimina") eventi.push(m); else if (!noti.has(m.id)) noti.set(m.id, {...m});
+  }
+  eventi.sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  for (const ev of eventi) {
+    const o = noti.get(ev.rif);
+    if (!o || o.utente !== ev.utente || sedeAttuale(S, o.sede) !== sedeAttuale(S, ev.sede)) continue;
+    if (o.eliminato || (ev.ts || 0) < (o._ts_evento || 0)) continue;
+    o._ts_evento = ev.ts || 0;
+    if (ev.tipo === "modifica") { o.testo = ev.testo || ""; o.modificato = ev.ts || 0; }
+    else { o.eliminato = true; o.testo = ""; delete o.file; delete o.commessa; }
+  }
+  C.msgs = [...noti.values()].sort((a, b) => (a.ts || 0) - (b.ts || 0));
+  C.sporco = false;
+}
+function eDiretto(C) { return !C.ris && C.id.startsWith("DM ") && !!C.info.diretto; }
+function partecipanti(C) { return (C.info.partecipanti || []).filter(p => p && typeof p === "object"); }
+function altro(S, C) {
+  for (const p of partecipanti(C)) if (!stessaPersona(S, p, IO, NOME_CENTRALE)) return {utente: p.utente || "", sede: sedeAttuale(S, p.sede || "")};
+  return null;
+}
+function visibile(S, C) {
+  if (!C.haInfo && !Object.keys(C.files).length) return false;
+  if (C.ris && C.info.potenziale) return false;
+  if (eDiretto(C)) return partecipanti(C).some(p => stessaPersona(S, p, IO, NOME_CENTRALE));
+  return true;
+}
+function titolo(S, C) {
+  if (eDiretto(C)) { const a = altro(S, C); return a ? a.utente : "?"; }
+  if (C.info.novita) return "📢 Novità";
+  return C.info.titolo || C.nome;
+}
+
+// ---- lettura iniziale e aggiornamenti incrementali
+async function applica(voci, k, tipo, base) {
+  const S = SEDI[k], scarica = [];
+  for (const v of voci) {
+    const p = v.path_display || v.path_lower || "";
+    if (!p.toLowerCase().startsWith(base.toLowerCase() + "/")) continue;
+    const rel = p.slice(base.length + 1).split("/");
+    if (tipo === "presenza") {
+      if (rel.length !== 1 || !rel[0].endsWith(".json")) continue;
+      if (v[".tag"] === "deleted") { delete S.presenze[rel[0]]; continue; }
+      if (v[".tag"] === "file") scarica.push(async () => { const f = await scaricaTesto(p); if (f) try { S.presenze[rel[0]] = JSON.parse(f.testo); } catch (e) {} });
+      continue;
+    }
+    const id = (tipo === "riservato" ? "R:" : "") + rel[0];
+    if (rel.length === 1) { if (v[".tag"] === "deleted") delete S.canali[id]; else if (v[".tag"] === "folder") canale(S, id); continue; }
+    if (rel.length !== 2) continue;
+    const C = canale(S, id), nf = rel[1];
+    if (v[".tag"] === "deleted") { if (nf === "canale.json") { C.info = {}; C.haInfo = false; } else { delete C.files[nf]; C.sporco = true; } continue; }
+    if (v[".tag"] !== "file") continue;
+    if (nf === "canale.json") scarica.push(async () => { const f = await scaricaTesto(p); if (f) try { C.info = JSON.parse(f.testo) || {}; C.haInfo = true; } catch (e) {} });
+    else if (nf.endsWith(".jsonl") && (!C.files[nf] || C.files[nf].rev !== v.rev))
+      scarica.push(async () => { const f = await scaricaTesto(p); if (f) { C.files[nf] = f; C.sporco = true; } });
+  }
+  await aLotti(scarica, 6);
+}
+async function caricaTutto() {
+  SEDI = {}; CURSORI = [];
+  const rad = await elenca(RADICE, false);
+  const cartelle = rad.voci.filter(v => v[".tag"] === "folder" && !v.name.endsWith(" - Riservato")).map(v => v.name);
+  const info = await aLotti(cartelle.map(n => async () => { const f = await scaricaTesto(`${RADICE}/${n}/sede.json`); try { return f ? JSON.parse(f.testo) : null; } catch (e) { return null; } }), 6);
+  cartelle.forEach((n, i) => {
+    const inf = info[i];
+    if (!inf) return;
+    const chi = inf.visibile_a;
+    if (chi && !chi.map(x => String(x).toLowerCase()).includes(IO.toLowerCase())) return;
+    SEDI[n] = {k: n, cart: `${RADICE}/${n}`, info: inf, canali: {}, presenze: {}, utenti: []};
+  });
+  await aLotti(Object.values(SEDI).map(S => async () => {
+    for (const [tipo, base] of [["canali", S.cart + "/canali"], ["riservato", S.cart + " - Riservato/canali"], ["presenza", S.cart + "/presenza"]]) {
+      const r = await elenca(base, tipo !== "presenza");
+      await applica(r.voci, S.k, tipo, base);
+      if (r.cursore) CURSORI.push({path: base, cursore: r.cursore, k: S.k, tipo});
+    }
+    const u = await scaricaTesto(S.cart + "/utenti.json");
+    try { S.utenti = u ? Object.keys(JSON.parse(u.testo)) : []; } catch (e) { S.utenti = []; }
+  }), 3);
+  for (const S of Object.values(SEDI)) for (const C of Object.values(S.canali)) ricostruisci(S, C);
+}
+let syncInCorso = null, ultimoSync = 0;
+function sincronizza(forza) {
+  if (syncInCorso) return syncInCorso;
+  if (!forza && Date.now() - ultimoSync < (SYNC_S - 1) * 1000) return Promise.resolve(false);
+  syncInCorso = (async () => {
+    let cambiato = false;
+    for (const c of CURSORI) {
+      let r;
+      try { r = await cambiamenti(c.cursore); }
+      catch (e) {
+        if (e.stato === 409) { const n = await elenca(c.path, c.tipo !== "presenza"); r = n; } else throw e;
+      }
+      if (r.voci.length) { cambiato = true; await applica(r.voci, c.k, c.tipo, c.path); }
+      if (r.cursore) c.cursore = r.cursore;
+    }
+    for (const S of Object.values(SEDI)) for (const C of Object.values(S.canali)) ricostruisci(S, C);
+    ultimoSync = Date.now();
+    return cambiato;
+  })().finally(() => { syncInCorso = null; });
+  return syncInCorso;
+}
+
+// ---- scrittura (solo il proprio file .jsonl del canale)
+async function scriviRiga(S, C, riga) {
+  const nf = CHIAVE + ".jsonl", path = C.cart + "/" + nf;
+  for (let i = 0; i < 4; i++) {
+    const prima = C.files[nf];
+    const testo = (prima ? prima.testo : "") + JSON.stringify(riga) + "\n";
+    try {
+      const meta = await carica(path, new Blob([testo], {type: "application/octet-stream"}),
+        prima ? {".tag": "update", "update": prima.rev} : {".tag": "add"});
+      C.files[nf] = {testo, rev: meta.rev}; C.sporco = true; ricostruisci(S, C);
+      return;
+    } catch (e) {
+      if (e.stato !== 409) throw e;
+      const f = await scaricaTesto(path);          // il file è cambiato altrove (altra scheda): si riparte da lì
+      if (f) C.files[nf] = f; else delete C.files[nf];
+    }
+  }
+  throw new Error("Impossibile salvare il messaggio, riprova.");
+}
+const nuovoId = () => crypto.randomUUID ? crypto.randomUUID().replace(/-/g, "") : [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, "0")).join("");
+async function invia(S, C, testo, file) {
+  const m = {id: nuovoId(), ts: Date.now() / 1000, utente: IO, sede: NOME_CENTRALE, testo};
+  if (file) m.file = file;
+  await scriviRiga(S, C, m);
+  segnaLetto(S, C);
+}
+async function evento(S, C, tipo, rif, extra) {
+  await scriviRiga(S, C, {id: nuovoId(), ts: Date.now() / 1000, utente: IO, sede: NOME_CENTRALE, tipo, rif, ...(extra || {})});
+}
+
+// ---- presenza (così le sedi vedono «online» e le spunte blu)
+async function battito(stato) {
+  const lav = Object.values(SEDI).map(S => async () => {
+    const letture = {};
+    for (const C of Object.values(S.canali)) if (C.msgs.length) {
+      const ult = C.msgs[C.msgs.length - 1].ts || 0;
+      letture[C.id] = [ult, Math.min(ult, LETTI[S.k + "|" + C.id] || 0)];
+    }
+    const d = {utente: IO, sede: NOME_CENTRALE, pc: PC, ts: Date.now() / 1000, stato: stato || "online", versione: "web", letture};
+    await carica(S.cart + "/presenza/" + CHIAVE + ".json", new Blob([JSON.stringify(d, null, 1)]), "overwrite");
+  });
+  await aLotti(lav, 3);
+}
+function letture(S, C) {         // [ricevuto, letto] massimi delle altre persone per il canale
+  let r = 0, l = 0;
+  for (const p of Object.values(S.presenze)) {
+    if (stessaPersona(S, p, IO, NOME_CENTRALE)) continue;
+    const v = p.letture && p.letture[C.id];
+    if (Array.isArray(v)) { r = Math.max(r, +v[0] || 0); l = Math.max(l, +v[1] || 0); }
+  }
+  return [r, l];
+}
+function online(S) {
+  const ora = Date.now() / 1000;
+  return Object.values(S.presenze).filter(p => p.stato === "online" && ora - (p.ts || 0) < ONLINE_S && !stessaPersona(S, p, IO, NOME_CENTRALE));
+}
+
+// ======================================================================= interfaccia: elenco chat
+const COLORI = ["#25a35a", "#1f7aec", "#e2603d", "#a35bd6", "#e8a20c", "#13a3a3", "#d6457a", "#6a7bd6", "#5a8f29"];
+const colore = s => { let h = 0; for (const c of String(s)) h = (h * 31 + c.charCodeAt(0)) >>> 0; return COLORI[h % COLORI.length]; };
+const iniziali = s => {            // «1780 - Glass Paletizing» → GP, «BG002-26» → BG, «Pedro» → P
+  const p = String(s).split(/[\s\-_.·]+/).filter(w => /\p{L}/u.test(w));
+  if (p.length >= 2) return (p[0].match(/\p{L}/u)[0] + p[1].match(/\p{L}/u)[0]).toUpperCase();
+  if (!p.length) return "#";
+  const m = p[0].match(/^\p{Lu}{2}/u);
+  return m ? m[0] : p[0].match(/\p{L}/u)[0].toUpperCase();
+};
+const avatar = (t, cls) => `<div class="avatar ${cls || ""}" style="background:${colore(t)}">${esc(t.startsWith("📢") ? "📢" : iniziali(t))}</div>`;
+const nomeBreve = s => String(s).split(" ")[0];
+function ora(ts) { return new Date(ts * 1000).toLocaleTimeString("it-IT", {hour: "2-digit", minute: "2-digit"}); }
+function quando(ts) {
+  const d = new Date(ts * 1000), o = new Date(), ieri = new Date(); ieri.setDate(o.getDate() - 1);
+  if (d.toDateString() === o.toDateString()) return ora(ts);
+  if (d.toDateString() === ieri.toDateString()) return "Ieri";
+  if (o - d < 6 * 86400000) return d.toLocaleDateString("it-IT", {weekday: "long"});
+  return d.toLocaleDateString("it-IT", {day: "2-digit", month: "2-digit", year: "2-digit"});
+}
+function giorno(ts) {
+  const d = new Date(ts * 1000), o = new Date(), ieri = new Date(); ieri.setDate(o.getDate() - 1);
+  if (d.toDateString() === o.toDateString()) return "Oggi";
+  if (d.toDateString() === ieri.toDateString()) return "Ieri";
+  return d.toLocaleDateString("it-IT", {day: "numeric", month: "long", year: d.getFullYear() === o.getFullYear() ? undefined : "numeric"});
+}
+function nonLetti(S, C) { const lim = LETTI[S.k + "|" + C.id] || 0; return C.msgs.filter(m => (m.ts || 0) > lim && !eMio(S, m) && !m.eliminato).length; }
+function anteprima(S, C) {
+  const m = C.msgs[C.msgs.length - 1];
+  if (!m) return "";
+  let t = m.eliminato ? "🚫 Messaggio eliminato" : m.commessa ? "📋 " + (m.commessa.titolo || "Commessa") :
+    (m.file && !m.testo ? (IMG.test(m.file) ? "📷 Foto" : "📎 " + m.file.split(/[\\/]/).pop()) : (m.file ? "📎 " : "") + (m.testo || ""));
+  if (eMio(S, m)) { const [r, l] = letture(S, C); return `<span class="spunte ${l >= m.ts ? "letto" : ""}">${r >= m.ts ? "✓✓" : "✓"}</span>&nbsp; ` + esc(t); }
+  return (eDiretto(C) ? "" : esc(nomeBreve(m.utente)) + ": ") + esc(t);
+}
+let FILTRO = "tutte", MOSTRA_ARCH = false;
+function tutteLeChat() {
+  const out = [];
+  for (const S of Object.values(SEDI)) for (const C of Object.values(S.canali)) if (visibile(S, C)) out.push([S, C]);
+  return out;
+}
+function disegnaFiltri() {
+  const sedi = Object.keys(SEDI).sort();
+  const voci = [["tutte", "Tutte"], ["nonlette", "Da leggere"], ["dirette", "Dirette"], ...sedi.map(k => [k, k.replace(/^PEITIAN /, "")])];
+  $("filtri").innerHTML = "";
+  for (const [k, t] of voci) {
+    const b = document.createElement("button"); b.textContent = t; b.className = FILTRO === k ? "on" : "";
+    b.onclick = () => { FILTRO = k; MOSTRA_ARCH = false; disegnaFiltri(); disegnaElenco(); };
+    $("filtri").appendChild(b);
+  }
+}
+function disegnaElenco() {
+  const el = $("elenco"), q = $("cerca").value.trim().toLowerCase();
+  let chat = tutteLeChat();
+  if (FILTRO === "nonlette") chat = chat.filter(([S, C]) => nonLetti(S, C));
+  else if (FILTRO === "dirette") chat = chat.filter(([S, C]) => eDiretto(C));
+  else if (FILTRO !== "tutte") chat = chat.filter(([S]) => S.k === FILTRO);
+  const arch = chat.filter(([S, C]) => C.info.archiviato);
+  chat = chat.filter(([S, C]) => !!C.info.archiviato === MOSTRA_ARCH);
+  const ult = C => C.msgs.length ? C.msgs[C.msgs.length - 1].ts || 0 : (C.info.creato || 0);
+  chat.sort((a, b) => ult(b[1]) - ult(a[1]));
+  el.innerHTML = "";
+  if (q) {                       // ricerca: chat per nome e poi messaggi
+    const perNome = chat.filter(([S, C]) => (titolo(S, C) + " " + S.k).toLowerCase().includes(q));
+    for (const [S, C] of perNome) el.appendChild(rigaChat(S, C));
+    const parole = q.split(/\s+/), trovati = [];
+    for (const [S, C] of tutteLeChat()) for (const m of C.msgs)
+      if (!m.eliminato && parole.every(p => `${m.testo || ""} ${m.file || ""} ${m.utente || ""}`.toLowerCase().includes(p))) trovati.push([S, C, m]);
+    trovati.sort((a, b) => b[2].ts - a[2].ts);
+    if (trovati.length) el.insertAdjacentHTML("beforeend", `<div class="gruppo">Messaggi</div>`);
+    for (const [S, C, m] of trovati.slice(0, 80)) {
+      const v = document.createElement("div"); v.className = "voce";
+      v.innerHTML = avatar(titolo(S, C), "p") + `<div class="corpo"><div class="su"><span class="nome">${esc(titolo(S, C))}</span><span class="ora">${quando(m.ts)}</span></div>` +
+        `<div class="giu"><span class="ant">${esc(nomeBreve(m.utente))}: ${esc(m.testo || m.file || "")}</span></div></div>`;
+      v.onclick = () => apriChat(S.k, C.id, m.id);
+      el.appendChild(v);
+    }
+    if (!perNome.length && !trovati.length) el.innerHTML = `<div class="vuoto">Nessun risultato</div>`;
+    return;
+  }
+  if (MOSTRA_ARCH) {
+    const v = document.createElement("div"); v.className = "voce";
+    v.innerHTML = `<div class="avatar" style="background:#8696a0">‹</div><div class="corpo"><div class="su"><span class="nome">Torna alle chat</span></div></div>`;
+    v.onclick = () => { MOSTRA_ARCH = false; disegnaElenco(); };
+    el.appendChild(v);
+  } else if (arch.length) {
+    const v = document.createElement("div"); v.className = "voce";
+    v.innerHTML = `<div class="avatar" style="background:#8696a0">📦</div><div class="corpo"><div class="su"><span class="nome">Archiviate</span><span class="ora">${arch.length}</span></div></div>`;
+    v.onclick = () => { MOSTRA_ARCH = true; disegnaElenco(); };
+    el.appendChild(v);
+  }
+  for (const [S, C] of chat) el.appendChild(rigaChat(S, C));
+  if (!chat.length) el.insertAdjacentHTML("beforeend", `<div class="vuoto">Nessuna chat</div>`);
+}
+function rigaChat(S, C) {
+  const n = nonLetti(S, C), t = titolo(S, C), m = C.msgs[C.msgs.length - 1];
+  const v = document.createElement("div"); v.className = "voce" + (n ? " nl" : "");
+  v.innerHTML = avatar(t) + `<div class="corpo"><div class="su"><span class="nome">${C.ris ? "🔒 " : ""}${esc(t)}</span>` +
+    `<span class="ora">${m ? quando(m.ts) : ""}</span></div><div class="giu"><span class="sede">${esc(S.k.replace(/^PEITIAN /, ""))}</span>` +
+    `<span class="ant">${anteprima(S, C)}</span>${n ? `<span class="badge">${n}</span>` : ""}</div></div>`;
+  v.onclick = () => apriChat(S.k, C.id);
+  return v;
+}
+$("cerca").oninput = () => disegnaElenco();
+$("b-aggiorna").onclick = () => aggiornaOra(true);
+
+// ======================================================================= interfaccia: chat
+let CORR = null, FOTO = {};          // FOTO: percorso -> url blob della miniatura
+function segnaLetto(S, C) {
+  const ult = C.msgs.length ? C.msgs[C.msgs.length - 1].ts || 0 : 0;
+  if ((LETTI[S.k + "|" + C.id] || 0) < ult) { LETTI[S.k + "|" + C.id] = ult; ls.set("letti_" + IO, LETTI); }
+}
+function apriChat(k, id, evidenzia) {
+  const S = SEDI[k], C = S && S.canali[id];
+  if (!C) return;
+  CORR = {S, C, primoNonLetto: LETTI[k + "|" + id] || 0, firma: ""};
+  const t = titolo(S, C);
+  $("c-avatar").innerHTML = avatar(t, "p");
+  $("c-titolo").textContent = (C.ris ? "🔒 " : "") + t;
+  sottotitolo();
+  avviso("avviso-chat", "");
+  mostra("v-chat");
+  history.pushState({v: "chat"}, "");
+  disegnaChat(true, evidenzia);
+}
+function sottotitolo() {
+  if (!CORR) return;
+  const {S, C} = CORR, on = online(S);
+  if (eDiretto(C)) {
+    const a = altro(S, C), lui = a && Object.values(S.presenze).filter(p => stessaPersona(S, p, a.utente, a.sede));
+    const onl = lui && lui.some(p => p.stato === "online" && Date.now() / 1000 - (p.ts || 0) < ONLINE_S);
+    const ult = lui && lui.length ? Math.max(...lui.map(p => p.ts || 0)) : 0;
+    $("c-sotto").textContent = (a ? a.sede + " · " : "") + (onl ? "online" : ult ? "ultimo accesso " + quando(ult) : "");
+  } else {
+    $("c-sotto").textContent = S.k + (on.length ? " · " + [...new Set(on.map(p => nomeBreve(p.utente)))].join(", ") + " online" : "");
+  }
+}
+function testoMsg(S, C, m) {
+  if (m.eliminato) return `<div class="t">🚫 Messaggio eliminato</div>`;
+  let h = "";
+  if (m.commessa) {
+    const c = m.commessa;
+    h += `<div class="t">📋 Commessa ${esc(c.numero || "")} «${esc(c.titolo || "")}»${c.evento === "creata" ? " creata" : ": stato " + esc(c.stato || "")}</div>`;
+  }
+  if (m.file) {
+    const nome = m.file.split(/[\\/]/).pop(), p = C.fileDir + "/" + m.file.replace(/\\/g, "/");
+    if (IMG.test(nome)) h += `<img class="foto" data-p="${esc(p)}" alt="${esc(nome)}" src="${FOTO[p] || ""}">`;
+    else h += `<a class="file" href="#" data-p="${esc(p)}"><span style="font-size:24px">📄</span><span>${esc(nome)}</span></a>`;
+  }
+  if (m.testo) h += `<span class="t">${link(m.testo)}</span>`;
+  return h;
+}
+function disegnaChat(inizio, evidenzia) {
+  if (!CORR) return;
+  const {S, C} = CORR, box = $("messaggi");
+  const firma = C.msgs.length + "|" + (C.msgs.length ? C.msgs[C.msgs.length - 1].ts : 0) + "|" + C.msgs.reduce((a, m) => a + (m._ts_evento || 0), 0) + "|" + letture(S, C).join(",");
+  if (!inizio && firma === CORR.firma) return;
+  CORR.firma = firma;
+  const inFondo = inizio || box.scrollHeight - box.scrollTop - box.clientHeight < 100;
+  const [ric, let_] = letture(S, C);
+  let g = "", prec = null, sepFatto = false, html = "";
+  const msgs = C.msgs.slice(-400);
+  if (!msgs.length) html = `<div class="vuoto">Nessun messaggio</div>`;
+  for (const m of msgs) {
+    const gg = giorno(m.ts || 0);
+    if (gg !== g) { g = gg; prec = null; html += `<div class="giorno"><span>${esc(gg)}</span></div>`; }
+    const mio = eMio(S, m);
+    if (!sepFatto && !mio && (m.ts || 0) > CORR.primoNonLetto && CORR.primoNonLetto) { sepFatto = true; html += `<div class="nonletti-sep" id="sep-nl">Messaggi non letti</div>`; }
+    const primo = !prec || prec.utente !== m.utente || prec.sede !== m.sede || (m.ts - prec.ts) > 600;
+    const cls = "fumetto" + (m.eliminato ? " eliminato" : "") + (m.commessa ? " sistema" : "");
+    const spunte = mio ? `<span class="spunte ${let_ >= m.ts ? "letto" : ""}">${ric >= m.ts ? "✓✓" : "✓"}</span>` : "";
+    const chi = !mio && primo && !eDiretto(C) ? `<div class="chi" style="color:${colore(m.utente)}">${esc(m.utente)} <span style="color:#8696a0;font-weight:400">· ${esc(m.sede || "")}</span></div>` : "";
+    html += `<div class="riga${mio ? " mio" : ""}${primo ? " primo" : ""}" data-id="${esc(m.id)}"><div class="${cls}">${chi}${testoMsg(S, C, m)}` +
+      `<span class="piede">${m.modificato ? "modificato · " : ""}${ora(m.ts || 0)}${spunte}</span></div></div>`;
+    prec = m;
+  }
+  box.innerHTML = html;
+  box.querySelectorAll("img.foto").forEach(img => { if (!img.getAttribute("src")) miniatura(img); });
+  if (evidenzia) {
+    const e = box.querySelector(`[data-id="${CSS.escape(evidenzia)}"] .fumetto`);
+    if (e) { e.scrollIntoView({block: "center"}); e.classList.add("evidenza"); }
+  } else if (inizio && $("sep-nl")) $("sep-nl").scrollIntoView({block: "start"});
+  else if (inFondo) box.scrollTop = box.scrollHeight;
+  segnaLetto(S, C);
+}
+async function miniatura(img) {
+  const p = img.dataset.p;
+  if (FOTO[p]) { img.src = FOTO[p]; return; }
+  try {
+    const r = await contenuto("files/get_thumbnail_v2", {resource: {".tag": "path", path: p}, format: "jpeg", size: "w640h480", mode: "fitone_bestfit"});
+    FOTO[p] = URL.createObjectURL(await r.blob());
+    const box = $("messaggi"), giu = box.scrollHeight - box.scrollTop - box.clientHeight < 150;
+    img.onload = () => { if (giu) box.scrollTop = box.scrollHeight; };
+    img.src = FOTO[p];
+  } catch (e) { img.replaceWith(Object.assign(document.createElement("span"), {className: "t", textContent: "📷 " + img.alt})); }
+}
+$("messaggi").addEventListener("click", async e => {
+  const a = e.target.closest("a.file"), img = e.target.closest("img.foto");
+  if (a || img) {
+    e.preventDefault();
+    const p = (a || img).dataset.p;
+    if (img && FOTO[p]) { $("visore-img").src = FOTO[p]; $("visore").classList.add("on"); history.pushState({v: "foto"}, ""); return; }
+    const w = window.open("", "_blank");            // aperta subito: Safari blocca le finestre aperte dopo un'attesa
+    try { const d = await rpc("files/get_temporary_link", {path: p}); if (w) w.location = d.link; else location.href = d.link; }
+    catch (err) { if (w) w.close(); alert("File non trovato su Dropbox."); }
+    return;
+  }
+  if (e.target.closest("a")) return;
+  const r = e.target.closest(".riga");
+  if (r && CORR) azioni(CORR.C.msgs.find(m => m.id === r.dataset.id));
+});
+$("visore-x").onclick = () => history.back();
+function foglio(voci) {
+  const p = $("foglio-p"); p.innerHTML = "";
+  for (const [t, f, rosso] of voci) {
+    const b = document.createElement("button"); b.textContent = t; if (rosso) b.className = "rosso";
+    b.onclick = () => { $("foglio").classList.remove("on"); f && f(); };
+    p.appendChild(b);
+  }
+  $("foglio").classList.add("on");
+}
+$("foglio").onclick = e => { if (e.target.id === "foglio") $("foglio").classList.remove("on"); };
+function azioni(m) {
+  if (!m || m.eliminato) return;
+  const {S, C} = CORR, voci = [];
+  if (m.testo && navigator.clipboard) voci.push(["Copia", () => navigator.clipboard.writeText(m.testo)]);
+  if (eMio(S, m) && !m.commessa) {
+    voci.push(["Modifica", async () => {
+      const t = prompt("Modifica il messaggio:", m.testo || "");
+      if (t === null || !t.trim() || t.trim() === m.testo) return;
+      try { await evento(S, C, "modifica", m.id, {testo: t.trim()}); disegnaChat(false); } catch (e) { alert(e.message); }
+    }]);
+    voci.push(["Elimina per tutti", async () => {
+      if (!confirm("Eliminare questo messaggio per tutti?")) return;
+      try { await evento(S, C, "elimina", m.id); disegnaChat(false); } catch (e) { alert(e.message); }
+    }, true]);
+  }
+  if (!voci.length) return;
+  voci.push(["Annulla", null]);
+  foglio(voci);
+}
+$("b-invia").onclick = async () => {
+  const t = $("m-testo").value.trim(); if (!t || !CORR) return;
+  $("m-testo").value = ""; altezza();
+  try { await invia(CORR.S, CORR.C, t.slice(0, 20000)); disegnaChat(false); $("messaggi").scrollTop = $("messaggi").scrollHeight; }
+  catch (e) { $("m-testo").value = t; altezza(); alert("Messaggio non inviato: " + e.message); }
+};
+$("m-testo").addEventListener("input", altezza);
+function altezza() { const t = $("m-testo"); t.style.height = "auto"; t.style.height = Math.min(t.scrollHeight, 130) + "px"; }
+$("b-allega").onclick = () => $("f-file").click();
+$("b-foto").onclick = () => $("f-foto").click();
+async function allega(files) {
+  if (!CORR) return;
+  const {S, C} = CORR;
+  let nota = $("m-testo").value.trim(); $("m-testo").value = ""; altezza();
+  for (const f of files) {
+    avviso("avviso-chat", "Invio di " + f.name + "…");
+    try {
+      let nome = pulisci(f.name) || "file";
+      if (/^image\.(jpe?g|png|heic)$/i.test(nome)) { const d = new Date(), z = n => String(n).padStart(2, "0");
+        nome = `Foto ${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())} ${z(d.getHours())}.${z(d.getMinutes())}.${z(d.getSeconds())}` + nome.slice(5); }
+      const meta = await carica(C.fileDir + "/Allegati chat/" + nome, f, {".tag": "add"}, true);
+      const rel = meta.path_display.slice(C.fileDir.length + 1);
+      await invia(S, C, nota, rel); nota = "";
+    } catch (e) { alert(f.name + ": " + e.message); }
+  }
+  avviso("avviso-chat", ""); disegnaChat(false); $("messaggi").scrollTop = $("messaggi").scrollHeight;
+}
+$("f-file").onchange = () => { const f = [...$("f-file").files]; $("f-file").value = ""; allega(f); };
+$("f-foto").onchange = () => { const f = [...$("f-foto").files]; $("f-foto").value = ""; allega(f); };
+$("b-indietro").onclick = () => history.back();
+document.querySelectorAll(".indietro").forEach(b => b.onclick = () => history.back());
+window.onpopstate = () => {
+  if ($("visore").classList.contains("on")) { $("visore").classList.remove("on"); return; }
+  $("foglio").classList.remove("on");
+  CORR = null; mostra("v-home"); disegnaElenco();
+};
+
+// ======================================================================= nuova chat diretta
+$("b-nuova").onclick = () => {
+  const el = $("persone"); el.innerHTML = `<div class="gruppo">Scrivi in privato a</div>`;
+  const pers = [];
+  for (const S of Object.values(SEDI)) for (const u of S.utenti) pers.push([S, u]);
+  pers.sort((a, b) => a[0].k.localeCompare(b[0].k) || a[1].localeCompare(b[1]));
+  let g = null;
+  for (const [S, u] of pers) {
+    if (S.k !== g) { g = S.k; el.insertAdjacentHTML("beforeend", `<div class="gruppo" style="color:#667781">${esc(g)}</div>`); }
+    const onl = online(S).some(p => stessaPersona(S, p, u, S.k));
+    const v = document.createElement("div"); v.className = "voce";
+    v.innerHTML = avatar(u) + `<div class="corpo"><div class="su"><span class="nome">${esc(u)}</span></div><div class="giu"><span class="ant">${onl ? "🟢 online" : esc(S.k)}</span></div></div>`;
+    v.onclick = async () => { try { const id = await apriDiretto(S, u, S.k); history.back(); setTimeout(() => apriChat(S.k, id), 60); } catch (e) { alert(e.message); } };
+    el.appendChild(v);
+  }
+  if (!pers.length) el.insertAdjacentHTML("beforeend", `<div class="vuoto">Nessuna persona</div>`);
+  mostra("v-persone"); history.pushState({v: "persone"}, "");
+};
+async function apriDiretto(S, utente, sede) {
+  for (const C of Object.values(S.canali))
+    if (eDiretto(C) && partecipanti(C).some(p => stessaPersona(S, p, utente, sede)) && partecipanti(C).some(p => stessaPersona(S, p, IO, NOME_CENTRALE))) {
+      if (C.info.archiviato) { C.info = {...C.info, archiviato: false, modificato: Date.now() / 1000, da: IO}; await carica(C.cart + "/canale.json", new Blob([JSON.stringify(C.info, null, 1)]), "overwrite"); }
+      return C.id;
+    }
+  const io = [IO, NOME_CENTRALE], lui = [utente, sedeAttuale(S, sede)];
+  const firma = [io, lui].map(([u, s]) => `${u.toLowerCase()}@${s.toLowerCase()}`).sort().join("|");
+  const sha = [...new Uint8Array(await crypto.subtle.digest("SHA-1", new TextEncoder().encode(firma)))].map(b => b.toString(16).padStart(2, "0")).join("");
+  const id = "DM " + sha.slice(0, 12), C = canale(S, id);
+  const info = {diretto: true, creato: Date.now() / 1000, da: IO, partecipanti: [{utente: io[0], sede: io[1]}, {utente: lui[0], sede: lui[1]}]};
+  try { await carica(C.cart + "/canale.json", new Blob([JSON.stringify(info, null, 1)]), {".tag": "add"}); }
+  catch (e) { if (e.stato !== 409) throw e; }
+  C.info = info; C.haInfo = true;
+  return id;
+}
+
+// ======================================================================= avvio e ciclo
+let timer = null, ultimoBattito = 0;
+function fermaTimer() { clearInterval(timer); timer = null; }
+async function aggiornaOra(forza) {
+  try {
+    await sincronizza(forza);
+    avviso("avviso-home", ""); if (CORR) avviso("avviso-chat", "");
+    if (Date.now() - ultimoBattito > BATTITO_S * 1000) { ultimoBattito = Date.now(); battito("online").catch(() => {}); }
+    if (CORR) { disegnaChat(false); sottotitolo(); } else if ($("v-home").classList.contains("on") && !$("cerca").value) disegnaElenco();
+  } catch (e) {
+    if (e.dropbox) { fermaTimer(); mostra("v-dropbox"); return; }
+    avviso(CORR ? "avviso-chat" : "avviso-home", "Connessione assente, riprovo…");
+  }
+}
+async function avvia() {
+  const s = ls.get("sessione");
+  IO = s.utente; CHIAVE = pulisci(IO + "__" + PC);
+  LETTI = ls.get("letti_" + IO, null);
+  mostra("v-home"); $("elenco").innerHTML = `<div class="vuoto">Caricamento della chat da Dropbox…</div>`;
+  try { await caricaTutto(); }
+  catch (e) { if (e.dropbox) { mostra("v-dropbox"); return; } $("elenco").innerHTML = `<div class="vuoto">Errore: ${esc(e.message)}<br><br><button class="secondario" onclick="avvia()">Riprova</button></div>`; return; }
+  if (!LETTI) {                     // primo accesso: quello che c'è già conta come letto
+    LETTI = {};
+    for (const S of Object.values(SEDI)) for (const C of Object.values(S.canali)) if (C.msgs.length) LETTI[S.k + "|" + C.id] = C.msgs[C.msgs.length - 1].ts || 0;
+    ls.set("letti_" + IO, LETTI);
+  }
+  ultimoSync = Date.now();
+  disegnaFiltri(); disegnaElenco();
+  ultimoBattito = Date.now(); battito("online").catch(() => {});
+  fermaTimer(); timer = setInterval(() => { if (document.visibilityState === "visible") aggiornaOra(false); }, SYNC_S * 1000);
+}
+document.addEventListener("visibilitychange", () => {
+  if (!IO || !ls.get("sessione")) return;
+  if (document.visibilityState === "visible") aggiornaOra(true);
+  else battito("offline").catch(() => {});
+});
+(function inizio() {
+  if (!ls.get("refresh")) { mostra("v-dropbox"); return; }
+  const s = ls.get("sessione");
+  if (!s || s.scade < Date.now()) { vaiLogin(); return; }
+  avvia();
+})();
+</script>
+</body></html>
