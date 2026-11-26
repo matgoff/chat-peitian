@@ -172,7 +172,7 @@ label{font-size:13px;color:var(--grigio)}
 <script>
 "use strict";
 // ======================================================================= impostazioni
-const APP_KEY_FISSA = "__APP_KEY__";             // la mette crea_web_iphone.py se la conosce
+const APP_KEY_FISSA = "keuy9srntbg6oo0";         // app Dropbox «Chat PEITIAN iPhone» (account info@, Dropbox completo)
 // cartella della chat: con un'app «cartella dell'app» è "/Chat Gestionale Europeo"; con un'app «Dropbox completo»
 // è dentro Applicazioni/Gestionale PEITIAN Europe. Si prova in quest'ordine e si ricorda quella trovata.
 const RADICI = ["/Applicazioni/Gestionale PEITIAN Europe/Chat Gestionale Europeo", "/Apps/Gestionale PEITIAN Europe/Chat Gestionale Europeo",
@@ -274,7 +274,7 @@ async function aLotti(lavori, n) {        // esegue promesse con al massimo n in
 }
 
 // ======================================================================= collegamento Dropbox (PKCE, codice da incollare)
-$("d-key").value = ls.get("app_key", APP_KEY_FISSA.startsWith("__") ? "" : APP_KEY_FISSA);
+$("d-key").value = APP_KEY_FISSA.startsWith("__") ? ls.get("app_key", "") : APP_KEY_FISSA;
 $("d-apri").onclick = async () => {
   const key = $("d-key").value.trim();
   if (!key) { $("d-errore").textContent = "Scrivi prima l'app key."; return; }
@@ -286,7 +286,7 @@ $("d-apri").onclick = async () => {
 };
 $("d-collega").onclick = async () => {
   $("d-errore").textContent = "";
-  const key = ls.get("app_key") || $("d-key").value.trim(), codice = $("d-codice").value.trim(), ver = ls.get("pkce");
+  const key = $("d-key").value.trim() || ls.get("app_key"), codice = $("d-codice").value.trim(), ver = ls.get("pkce");
   if (!key || !codice || !ver) { $("d-errore").textContent = "Apri prima Dropbox (punto 1) e incolla il codice."; return; }
   const r = await fetch(API + "/oauth2/token", {method: "POST", body: new URLSearchParams({code: codice, grant_type: "authorization_code", client_id: key, code_verifier: ver})});
   const d = await r.json().catch(() => ({}));
@@ -870,6 +870,8 @@ document.addEventListener("visibilitychange", () => {
   else battito("offline").catch(() => {});
 });
 (function inizio() {
+  // collegato con un'altra app Dropbox (la vecchia del Gestionale): va ricollegato con quella giusta
+  if (!APP_KEY_FISSA.startsWith("__") && ls.get("app_key") && ls.get("app_key") !== APP_KEY_FISSA) { ls.del("refresh"); ls.set("app_key", APP_KEY_FISSA); }
   if (!ls.get("refresh")) { mostra("v-dropbox"); return; }
   const s = ls.get("sessione");
   if (!s || s.scade < Date.now()) { vaiLogin(); return; }
